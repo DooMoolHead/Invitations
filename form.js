@@ -177,8 +177,10 @@
         e.preventDefault(); const k = e.target.elements.key.value.trim(); if (!k) return;
         R.setHostKey(k); render();
       });
-      try { rows = await R.list(); } catch { rows = []; }
+      let loadErr = false;
+      try { rows = await R.list(); } catch { rows = []; loadErr = true; }
       render();
+      if (loadErr) results.insertAdjacentHTML('afterbegin', '<p class="rv-err">응답 목록을 불러오지 못했어요. 잠시 후 새로고침해 주세요.</p>');
       if (!R.preview) {
         const refresh = async () => {
           if (document.hidden) return;
