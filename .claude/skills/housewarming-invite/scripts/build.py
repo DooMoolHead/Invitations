@@ -27,7 +27,8 @@ DEFAULT_LETTER = [
     '제일 먼저 보여주고 싶은 사람들을 불러요.',
     '요리는 잘 하는데 귀찮으니까 배달로 거하게 쏠게요.',
 ]
-DEFAULT_LABEL = '짜릿한 추억을 위한 세 가지 약속'
+DEFAULT_LABEL = '짜릿한 추억을 위한 {n} 가지 약속'
+KOR_NUM = {1: '한', 2: '두', 3: '세', 4: '네', 5: '다섯'}
 
 # 모자이크 세기: 블록 한 변 = 사진 가로폭 × 이 비율
 STRENGTH = {'light': 0.009, 'medium': 0.018, 'strong': 0.024, 'heavy': 0.045}
@@ -87,6 +88,8 @@ def main():
     sign = c.get('sign') or f"- {'&'.join(hosts)} -"
     site = c.get('site_url', '').rstrip('/') + '/'
 
+    if not 1 <= len(c['promises']) <= 5:
+        sys.exit('약속(promises)은 1~5개여야 해요.')
     items = []
     for i, p in enumerate(c['promises'], 1):
         imgs = ''.join(build_photo(ph, base, out_dir, f'p{i}-{j}.jpg')
@@ -105,7 +108,7 @@ def main():
         'OG_DESC': esc(c.get('og_description') or f"{' & '.join(hosts)}가 이사했어요. 되는 날 골라주세요!"),
         'SITE_URL': site,
         'YEAR': str(c.get('year') or c['dates'][0][:4]),
-        'PROMISES_LABEL': esc(c.get('promises_label', DEFAULT_LABEL)),
+        'PROMISES_LABEL': esc(c.get('promises_label', DEFAULT_LABEL).replace('{n}', KOR_NUM[len(c['promises'])])),
         'PROMISES_HTML': '\n'.join(items),
         'LETTER_HTML': letter_html,
         'VERSION': str(int(time.time())),
