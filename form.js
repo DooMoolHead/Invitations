@@ -6,10 +6,11 @@
   const openPeople = new Set();
 
   const chipsHTML = (checked = []) => R.dates().map(d => `<label><input type="checkbox" name="dates" value="${d}"${checked.includes(d) ? ' checked' : ''}><span>${R.fmt.mdw(d)}</span></label>`).join('');
+  const deLi = d => `<li><input type="date" value="${d}" aria-label="후보 날짜"><button type="button" class="rv-de-del">삭제</button><button type="button" class="rv-de-handle" aria-label="순서 이동 (꾹 눌러 위아래로 끌기)">↕</button></li>`;
   const editorHTML = () => `
       <div class="rv-de">
-        <p class="rv-sub">후보 날짜 관리 <span class="rv-sub-hint">고치거나 지우고 추가한 뒤 저장</span></p>
-        <ul class="rv-de-list">${R.dates().map(d => `<li><input type="date" value="${d}" aria-label="후보 날짜"><button type="button" class="rv-de-del">삭제</button></li>`).join('')}</ul>
+        <p class="rv-sub">후보 날짜 관리 <span class="rv-sub-hint">↕를 꾹 눌러 끌면 순서가 바뀌어요</span></p>
+        <ul class="rv-de-list">${R.dates().map(d => `${deLi(d)}`).join('')}</ul>
         <div class="rv-de-row"><input type="date" class="rv-de-new" aria-label="추가할 날짜"><button type="button" class="rv-de-add">추가</button></div>
         <button type="button" class="rv-de-save">날짜 저장</button>
         <p class="rv-de-msg" role="status"></p>
@@ -180,7 +181,7 @@
         if (e.target.closest('.rv-de-del')) { e.target.closest('li').remove(); editing = true; return; }
         if (e.target.closest('.rv-de-add')) {
           const inp = results.querySelector('.rv-de-new'); if (!inp.value) { inp.focus(); return; }
-          results.querySelector('.rv-de-list').insertAdjacentHTML('beforeend', `<li><input type="date" value="${inp.value}" aria-label="후보 날짜"><button type="button" class="rv-de-del">삭제</button></li>`);
+          results.querySelector('.rv-de-list').insertAdjacentHTML('beforeend', deLi(inp.value));
           inp.value = ''; editing = true; return;
         }
         const sv = e.target.closest('.rv-de-save');
@@ -209,6 +210,26 @@
         row.classList.toggle('is-open', on); b.setAttribute('aria-expanded', on); row.querySelector('.rv-voters').hidden = !on;
       });
       results.addEventListener('input', e => { if (e.target.closest('.rv-de')) editing = true; });
+      results.addEventListener('pointerdown', e => {
+        const h = e.target.closest('.rv-de-handle'); if (!h) return;
+        e.preventDefault();
+        const li = h.closest('li'), list = li.parentElement;
+        li.classList.add('is-drag'); editing = true;
+        const move = ev => {
+          const sibs = [...list.children].filter(x => x !== li);
+          const after = sibs.find(s => { const r = s.getBoundingClientRect(); return ev.clientY < r.top + r.height / 2; });
+          if (after) { if (li.nextElementSibling !== after) list.insertBefore(li, after); } else if (list.lastElementChild !== li) list.appendChild(li);
+        };
+        const up = () => { li.classList.remove('is-drag'); document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up); };
+        document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+      });
+      results.addEventListener('keydown', e => {
+        const h = e.target.closest('.rv-de-handle'); if (!h || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+        e.preventDefault(); const li = h.closest('li');
+        if (e.key === 'ArrowUp' && li.previousElementSibling) li.parentElement.insertBefore(li, li.previousElementSibling);
+        if (e.key === 'ArrowDown' && li.nextElementSibling) li.parentElement.insertBefore(li.nextElementSibling, li);
+        h.focus(); editing = true;
+      });
       results.addEventListener('submit', e => {
         if (!e.target.matches('.rv-host-form')) return;
         e.preventDefault(); const k = e.target.elements.key.value.trim(); if (!k) return;

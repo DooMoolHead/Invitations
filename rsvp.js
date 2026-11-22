@@ -45,7 +45,7 @@
     return j.rows;
   }
   async function saveDates(list) {
-    const clean = [...new Set(list.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+    const clean = [...new Set(list.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))];
     if (!C.endpoint) { settings = { ...settings, dates: clean }; try { localStorage.setItem(LSS, JSON.stringify(settings)); } catch {} return clean; }
     const r = await fetch(C.endpoint, { method: 'POST', body: JSON.stringify({ action: 'settings', key: hostKey(), settings: { dates: clean } }) });
     const j = await r.json();
