@@ -5,6 +5,17 @@
   const openDates = new Set();
   const openPeople = new Set();
 
+  const chipsHTML = (checked = []) => R.dates().map(d => `<label><input type="checkbox" name="dates" value="${d}"${checked.includes(d) ? ' checked' : ''}><span>${R.fmt.mdw(d)}</span></label>`).join('');
+  const editorHTML = () => `
+      <div class="rv-de">
+        <p class="rv-sub">후보 날짜 관리 <span class="rv-sub-hint">고치거나 지우고 추가한 뒤 저장</span></p>
+        <ul class="rv-de-list">${R.dates().map(d => `<li><input type="date" value="${d}" aria-label="후보 날짜"><button type="button" class="rv-de-del">삭제</button></li>`).join('')}</ul>
+        <div class="rv-de-row"><input type="date" class="rv-de-new" aria-label="추가할 날짜"><button type="button" class="rv-de-add">추가</button></div>
+        <button type="button" class="rv-de-save">날짜 저장</button>
+        <p class="rv-de-msg" role="status"></p>
+      </div>`;
+  let editing = false;
+
   function formHTML(L) {
     const open = R.voteOpen();
     return `
@@ -18,7 +29,7 @@
         </div></div>
       <div class="rv-field rv-when"><span class="rv-label">${open ? L.dates : '날짜'}</span>
         ${open ? `<p class="rv-hint">되는 날을 <b>전부</b> 골라주세요. 가장 많이 되는 날로 정할게요.</p>
-        <div class="rv-chips">${C.dates.map(d => `<label><input type="checkbox" name="dates" value="${d}"><span>${R.fmt.mdw(d)}</span></label>`).join('')}</div>`
+        <div class="rv-chips">${chipsHTML()}</div>`
         : `<p class="rv-hint">${C.confirmedDate ? R.fmt.mdw(C.confirmedDate) + '로 확정됐어요' : '투표가 마감됐어요'}</p>`}
       </div>
       <div class="rv-field rv-yes"><span class="rv-label">${L.car}</span>
@@ -45,7 +56,7 @@
     const voters = d => going0.filter(r => (r.dates || []).includes(d));
     const bars = C.confirmedDate ? '' : `
       <p class="rv-title">투표 현황 <span>날짜를 누르면 누가 골랐는지 보여요</span></p>
-      <div class="rv-bars">${C.dates.map(d => {
+      <div class="rv-bars">${R.dates().map(d => {
         const vs = voters(d), on = openDates.has(d);
         return `
         <div class="rv-row ${on ? 'is-open' : ''}">
@@ -85,6 +96,7 @@
         ${cars.length ? `<p class="rv-sub">방문차량 등록 <b>${cars.length}</b>대</p>
         <ul class="rv-cars">${cars.map(r => `<li><span>${esc(r.name)}</span><code>${esc(r.car)}</code></li>`).join('')}</ul>` : ''}
         ${no.length ? `<p class="rv-sub">아쉽지만 다음에 <b>${no.length}</b>명</p><ul class="rv-list">${no.map(card).join('')}</ul>` : ''}
+        ${host ? editorHTML() : ''}
         <p class="rv-host">${host ? `호스트 모드 켜짐 · <button type="button" class="rv-host-off">끄기</button>` : `<button type="button" class="rv-host-on">호스트</button>`}</p>
         <form class="rv-host-form" hidden><input name="key" type="password" autocomplete="off" placeholder="호스트 비밀번호" aria-label="호스트 비밀번호"><button type="submit">확인</button></form>
       </div>`;
@@ -165,6 +177,30 @@
           catch (er) { del.disabled = false; del.classList.remove('is-armed'); del.textContent = er.message === 'key' ? '비밀번호가 틀려요' : '삭제 실패, 다시 눌러주세요'; }
           return;
         }
+        if (e.target.closest('.rv-de-del')) { e.target.closest('li').remove(); editing = true; return; }
+        if (e.target.closest('.rv-de-add')) {
+          const inp = results.querySelector('.rv-de-new'); if (!inp.value) { inp.focus(); return; }
+          results.querySelector('.rv-de-list').insertAdjacentHTML('beforeend', `<li><input type="date" value="${inp.value}" aria-label="후보 날짜"><button type="button" class="rv-de-del">삭제</button></li>`);
+          inp.value = ''; editing = true; return;
+        }
+        const sv = e.target.closest('.rv-de-save');
+        if (sv) {
+          const list = [...results.querySelectorAll('.rv-de-list input')].map(i => i.value).filter(Boolean);
+          const msg = results.querySelector('.rv-de-msg');
+          if (!list.length) { msg.textContent = '날짜가 하나는 있어야 해요'; return; }
+          sv.disabled = true; sv.textContent = '저장 중…';
+          try {
+            await R.saveDates(list); editing = false;
+            const checked = [...f.querySelectorAll('[name=dates]:checked')].map(c => c.value);
+            const chips = f.querySelector('.rv-chips'); if (chips) chips.innerHTML = chipsHTML(checked);
+            render(); document.dispatchEvent(new CustomEvent('rsvp:dates'));
+            const m2 = results.querySelector('.rv-de-msg'); if (m2) m2.textContent = '저장했어요. 모두에게 바로 반영돼요.';
+          } catch (er) {
+            sv.disabled = false; sv.textContent = '날짜 저장';
+            msg.textContent = er.message === 'key' ? '호스트 비밀번호가 틀려요' : er.message === 'old-script' || er.message === 'name' ? 'Apps Script를 새 버전으로 다시 배포해야 저장돼요' : '저장이 안 됐어요. 다시 눌러주세요';
+          }
+          return;
+        }
         if (e.target.closest('.rv-host-on')) { const hf = results.querySelector('.rv-host-form'); hf.hidden = false; hf.elements.key.focus(); return; }
         if (e.target.closest('.rv-host-off')) { R.setHostKey(''); render(); return; }
         const b = e.target.closest('.rv-bar[data-date]'); if (!b) return;
@@ -172,6 +208,7 @@
         const row = b.parentElement, on = openDates.has(d);
         row.classList.toggle('is-open', on); b.setAttribute('aria-expanded', on); row.querySelector('.rv-voters').hidden = !on;
       });
+      results.addEventListener('input', e => { if (e.target.closest('.rv-de')) editing = true; });
       results.addEventListener('submit', e => {
         if (!e.target.matches('.rv-host-form')) return;
         e.preventDefault(); const k = e.target.elements.key.value.trim(); if (!k) return;
@@ -179,12 +216,19 @@
       });
       let loadErr = false;
       try { rows = await R.list(); } catch { rows = []; loadErr = true; }
+      { const chips = f.querySelector('.rv-chips'); if (chips) chips.innerHTML = chipsHTML([...f.querySelectorAll('[name=dates]:checked')].map(c => c.value)); }
+      document.dispatchEvent(new CustomEvent('rsvp:dates'));
       render();
       if (loadErr) results.insertAdjacentHTML('afterbegin', '<p class="rv-err">응답 목록을 불러오지 못했어요. 잠시 후 새로고침해 주세요.</p>');
       if (!R.preview) {
         const refresh = async () => {
           if (document.hidden) return;
-          try { const next = await R.list(); if (JSON.stringify(next) !== JSON.stringify(rows)) { rows = next; render(); } } catch {}
+          if (editing) return;
+          try {
+            const before = R.dates().join(); const next = await R.list();
+            if (before !== R.dates().join()) { const chips = f.querySelector('.rv-chips'); if (chips) chips.innerHTML = chipsHTML([...f.querySelectorAll('[name=dates]:checked')].map(c => c.value)); document.dispatchEvent(new CustomEvent('rsvp:dates')); rows = next; render(); }
+            else if (JSON.stringify(next) !== JSON.stringify(rows)) { rows = next; render(); }
+          } catch {}
         };
         setInterval(refresh, 15000);
         document.addEventListener('visibilitychange', refresh);

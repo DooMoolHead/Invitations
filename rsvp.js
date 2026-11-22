@@ -8,11 +8,16 @@
     set(v) { try { localStorage.setItem(LS, JSON.stringify(v)); } catch {} },
   };
   const norm = s => String(s || '').replace(/\s+/g, '');
+  const LSS = 'mingjja-settings-preview';
+  let settings = {};
+  const dates = () => (settings.dates && settings.dates.length ? settings.dates : C.dates);
+  const take = j => { if (j && j.settings && typeof j.settings === 'object') settings = j.settings; };
 
   async function list() {
-    if (!C.endpoint) return local.get();
+    if (!C.endpoint) { try { settings = JSON.parse(localStorage.getItem(LSS)) || {}; } catch { settings = {}; } return local.get(); }
     const r = await fetch(C.endpoint + '?action=list&t=' + Date.now());
     const j = await r.json();
+    take(j);
     return j.rows || [];
   }
   async function submit(entry) {
@@ -24,6 +29,7 @@
     const r = await fetch(C.endpoint, { method: 'POST', body: JSON.stringify({ action: 'upsert', entry }) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'save failed');
+    take(j);
     return j.rows;
   }
 
@@ -35,16 +41,27 @@
     const r = await fetch(C.endpoint, { method: 'POST', body: JSON.stringify({ action: 'delete', name, key: hostKey() }) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'delete failed');
+    take(j);
     return j.rows;
+  }
+  async function saveDates(list) {
+    const clean = [...new Set(list.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+    if (!C.endpoint) { settings = { ...settings, dates: clean }; try { localStorage.setItem(LSS, JSON.stringify(settings)); } catch {} return clean; }
+    const r = await fetch(C.endpoint, { method: 'POST', body: JSON.stringify({ action: 'settings', key: hostKey(), settings: { dates: clean } }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'settings failed');
+    if (!j.settings) throw new Error('old-script');
+    take(j);
+    return dates();
   }
 
   function tally(rows) {
     const going = rows.filter(r => r.attend !== 'no');
     const n = going.length;
-    const counts = Object.fromEntries(C.dates.map(d => [d, 0]));
+    const counts = Object.fromEntries(dates().map(d => [d, 0]));
     going.forEach(r => (r.dates || []).forEach(d => { if (d in counts) counts[d]++; }));
     let best = null;
-    C.dates.forEach(d => { if (!best || counts[d] > counts[best]) best = d; });
+    dates().forEach(d => { if (!best || counts[d] > counts[best]) best = d; });
     const majority = best && n > 0 && counts[best] > n / 2 ? best : null;
     return { n, counts, best, majority, people: n };
   }
@@ -64,7 +81,7 @@
   }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  window.RSVP = { list, submit, remove, hostKey, setHostKey, tally, fmt, voteOpen, copy, esc, preview: !C.endpoint,
+  window.RSVP = { list, submit, remove, saveDates, dates, hostKey, setHostKey, tally, fmt, voteOpen, copy, esc, preview: !C.endpoint,
     address: () => `${C.road} ${C.unit} (${C.complex})`,
     maps: () => ({ kakao: 'https://map.kakao.com/link/search/' + encodeURIComponent(C.mapQuery), naver: 'https://map.naver.com/p/search/' + encodeURIComponent(C.mapQuery) }),
   };
