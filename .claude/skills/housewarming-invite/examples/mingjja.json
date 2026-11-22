@@ -1,0 +1,30 @@
+{
+  "title": "밍짜네 집들이 초대장",
+  "subtitle_html": "<em>Again 도봉's High</em>를 위해,<br>도봉구 언에듀들을 초대합니다.",
+  "hosts": ["민주", "찬호"],
+  "sign": "- 민주&찬호 -",
+  "dates": ["2027-03-06", "2027-03-13", "2027-03-20", "2027-03-27"],
+  "promises_label": "짜릿한 추억을 위한 세 가지 약속",
+  "promises": [
+    { "title": "집들이 선물", "subtitle": "두 손은 가볍게, 추억은 파멸적으로",
+      "photos": [
+        { "src": "../../../../photos/memory-1.jpg", "alt": "추억 사진 1" },
+        { "src": "../../../../photos/memory-2.jpg", "alt": "추억 사진 2" },
+        { "src": "../../../../photos/memory-3.jpg", "alt": "추억 사진 3" },
+        { "src": "../../../../photos/memory-4.jpg", "alt": "추억 사진 4" } ] },
+    { "title": "칼부림", "subtitle": "태섭이가 죽을까봐 이번 집에 러그는 없어요.",
+      "photos": [
+        { "src": "../../../../photos/knife-1.jpg", "alt": "칼부림 장난 사진 1" },
+        { "src": "../../../../photos/knife-2.jpg", "alt": "칼부림 장난 사진 2", "ratio": 0.75, "position": "50% 60%" },
+        { "src": "../../../../photos/knife-3.jpg", "alt": "칼부림 장난 사진 3" } ] },
+    { "title": "수 아들", "subtitle": "물관리 합니다",
+      "photos": [
+        { "src": "../../../../photos/no-su-adeul.jpg", "alt": "수 아들 사진 1" },
+        { "src": "../../../../photos/su-2.jpg", "alt": "수 아들 사진 2" },
+        { "src": "../../../../photos/su-3.jpg", "alt": "수 아들 사진 3" } ] }
+  ],
+  "site_url": "https://doomoolhead.github.io/Invitations/",
+  "og_image": { "src": "../../../../og.jpg", "center_x": 0.5, "top_y": 0.0, "width": 1.0 },
+  "endpoint": "",
+  "host_password": ""
+}
