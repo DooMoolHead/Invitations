@@ -16,5 +16,5 @@ window.INVITE = {
     gallery: [],
   },
   /* Google Apps Script 웹앱 주소. 비어 있으면 '미리보기 모드'(이 폰에만 저장)로 동작해요. */
-  endpoint: '',
+  endpoint: 'https://script.google.com/macros/s/AKfycbyWgn44k2hWFX1c2cSJ3Rz8Y_mXG4YabZZx7VQsmBXgLDL9lEMshxPcvFN6o5SnF-Y/exec',
 };
