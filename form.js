@@ -82,7 +82,7 @@
         </button>
         <div class="rv-person-d" ${on ? '' : 'hidden'}>
           <dl>
-            <dt>되는 날</dt><dd>${(r.dates || []).length ? [...r.dates].sort().map(d => `(${R.fmt.md(d)})`).join(', ') : '—'}</dd>
+            <dt>되는 날</dt><dd>${(r.dates || []).length ? [...r.dates].filter(d => R.dates().includes(d)).sort().map(d => `(${R.fmt.md(d)})`).join(', ') || '—' : '—'}</dd>
             ${r.attend === 'no' ? '' : `<dt>이동</dt><dd>${transportLong(r)}</dd>`}
             <dt>한마디</dt><dd>${r.message ? esc(r.message) : '—'}</dd>
           </dl>
@@ -103,7 +103,7 @@
       </div>`;
   }
 
-  const trKind = r => r.transport || (r.car ? 'car' : 'transit');
+  const trKind = r => (['transit', 'car', 'ride'].includes(r.transport) ? r.transport : (r.car ? 'car' : 'transit'));
   const transportShort = r => ({ transit: '대중교통', car: '자차', ride: '친구 차' })[trKind(r)];
   const transportLong = r => {
     const k = trKind(r);
@@ -154,10 +154,11 @@
         const yes = f.elements.attend.value === 'yes';
         const dates = [...f.querySelectorAll('[name=dates]:checked')].map(c => c.value);
         if (!f.elements.name.value.trim()) { fieldErr(f.elements.name, '이름을 적어주세요'); return; }
+        if (!/^[가-힣a-zA-Z0-9 ]{1,10}$/.test(f.elements.name.value.trim())) { fieldErr(f.elements.name, '이름은 한글·영문·숫자로 10자까지 적어주세요'); return; }
         const bad = ['name', 'car', 'ride', 'message'].find(k => f.elements[k] && !f.elements[k].hidden && !R.canApply(f.elements[k].value));
         if (bad) { fieldErr(f.elements[bad], '맨 앞에 = + - @ 기호는 쓸 수 없어요'); return; }
         if (yes && R.voteOpen() && !dates.length) { fieldErr(f.querySelector('.rv-chips'), '되는 날을 하나 이상 골라주세요', false); return; }
-        if (yes && f.elements.hasCar.value === '1' && f.elements.car.value.replace(/\s/g, '').length < 7) { fieldErr(f.elements.car, '차량번호를 끝까지 적어주세요'); return; }
+        if (yes && f.elements.hasCar.value === '1' && !/^\d{2,3}\s?[가-힣]\s?\d{4}$/.test(f.elements.car.value.trim())) { fieldErr(f.elements.car, '차량번호 형식이 아니에요 (예: 12가 3456)'); return; }
         const btn = f.querySelector('.rv-submit'); btn.disabled = true; const label = btn.textContent; btn.textContent = '등록 중…';
         try {
           rows = await R.submit({ name: f.elements.name.value, attend: f.elements.attend.value, dates: yes ? dates : [], count: yes ? 1 : 0,
@@ -166,7 +167,12 @@
             ride: yes && f.elements.hasCar.value === '2' ? f.elements.ride.value.trim() : '', message: f.elements.message.value.trim() });
           render(); btn.textContent = '등록완료!'; btn.classList.add('is-done');
           results.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } catch (er) { err.textContent = R.why(er.message) || '저장이 안 됐어요. 잠시 후 다시 눌러주세요'; btn.textContent = label; }
+        } catch (er) {
+          btn.textContent = label;
+          const at = { 'name-format': f.elements.name, owner: f.elements.name, car: f.elements.car, dates: f.querySelector('.rv-chips') }[er.message];
+          if (at) fieldErr(at, R.why(er.message), er.message !== 'dates');
+          else err.textContent = R.why(er.message) || '저장이 안 됐어요. 잠시 후 다시 눌러주세요';
+        }
         btn.disabled = false;
       };
       sync();

@@ -10,7 +10,12 @@
   const norm = s => String(s || '').replace(/\s+/g, '');
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
   /* 시트에서 이상한 날짜 값이 와도 화면에 NaN이 뜨지 않게 올바른 'yyyy-mm-dd'만 남긴다 */
-  const clean = rows => (rows || []).map(x => ({ ...x, dates: (x.dates || []).map(String).filter(d => DATE_RE.test(d)) }));
+  const clean = rows => (rows || []).map(x => ({ ...x,
+    dates: x.attend === 'no' ? [] : [...new Set((x.dates || []).map(String).filter(d => DATE_RE.test(d)))] }));
+  /* 내가 등록한 이름의 '수정 열쇠'. 처음 등록한 폰에만 저장돼서 남이 같은 이름으로 덮어쓰지 못한다 */
+  const TK = 'mingjja-tokens';
+  const tokens = { get() { try { return JSON.parse(localStorage.getItem(TK)) || {}; } catch { return {}; } },
+                   set(n, t) { try { const m = tokens.get(); m[n] = t; localStorage.setItem(TK, JSON.stringify(m)); } catch {} } };
   /* 맨 앞이 = + - @ 탭 줄바꿈이면 스프레드시트가 수식으로 실행할 수 있어서 막는다 */
   const canApply = v => typeof v !== 'string' || !/^[=+\-@\t\r]/.test(v.trim());
   const LSS = 'mingjja-settings-preview';
@@ -31,9 +36,11 @@
       const rows = local.get().filter(r => norm(r.name) !== norm(entry.name));
       rows.push(entry); local.set(rows); return rows;
     }
-    const r = await fetch(C.endpoint, { method: 'POST', body: JSON.stringify({ action: 'upsert', entry }) });
+    entry.token = tokens.get()[norm(entry.name)] || '';
+    const r = await fetch(C.endpoint, { method: 'POST', body: JSON.stringify({ action: 'upsert', entry, key: hostKey() || undefined }) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'save failed');
+    if (j.token) tokens.set(norm(entry.name), j.token);
     take(j);
     return clean(j.rows);
   }
@@ -75,6 +82,10 @@
     closed: '지금은 등록을 잠시 닫아뒀어요. 조금 뒤에 다시 열게요',
     full: '등록 인원이 가득 찼어요. 호스트에게 연락해 주세요',
     key: '호스트 비밀번호가 틀려요',
+    'name-format': '이름은 한글·영문·숫자로 10자까지 적어주세요',
+    dates: '되는 날을 하나 이상 골라주세요',
+    car: '차량번호 형식이 아니에요 (예: 12가 3456)',
+    owner: '이미 다른 사람이 등록한 이름이에요. 본인이면 처음 등록한 폰에서 고쳐주세요',
   })[code];
 
   function tally(rows) {
