@@ -142,6 +142,7 @@ h1 small em{font-style:normal; color:var(--no)}
 .rv-de .rv-de-save{width:100%; margin-top:10px; background:var(--ink); color:var(--paper); border-color:var(--ink); font-size:14px}
 .rv-de-msg{margin:8px 0 0; font-size:12.5px; color:var(--ink-2)}
 .rv-de-msg:empty{display:none}
+.rv-closed{margin:0 0 14px; padding:10px 12px; border:1px solid var(--no); border-radius:4px; background:#fbeee6}
 .rv-host{margin:18px 0 0; text-align:right; font-size:12px; color:var(--ink-2)}
 .rv-host button{border:0; background:none; color:var(--ink-2); font:inherit; text-decoration:underline; cursor:pointer; padding:4px}
 .rv-host-form{display:flex; gap:6px; margin-top:8px}
@@ -221,10 +222,10 @@ footer{margin-top:28px; text-align:center; font-size:12px; color:var(--ink-2)}
 </main>
 <div class="toast" id="toast"></div>
 
-<script src="config.js?v=1795431473"></script>
-<script src="rsvp.js?v=1795431473"></script>
-<script src="form.js?v=1795431473"></script>
-<script src="lightbox.js?v=1795431473"></script>
+<script src="config.js?v=1795433057"></script>
+<script src="rsvp.js?v=1795433057"></script>
+<script src="form.js?v=1795433057"></script>
+<script src="lightbox.js?v=1795433057"></script>
 <script>
 const C = INVITE, $ = id => document.getElementById(id);
 const toast = m => { const t = $('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1600); };

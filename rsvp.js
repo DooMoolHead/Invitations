@@ -60,6 +60,23 @@
     return dates();
   }
 
+  const closed = () => !!settings.closed;
+  async function setClosed(v) {
+    if (!C.endpoint) { settings = { ...settings, closed: !!v }; try { localStorage.setItem(LSS, JSON.stringify(settings)); } catch {} return; }
+    const r = await fetch(C.endpoint, { method: 'POST', body: JSON.stringify({ action: 'close', key: hostKey(), closed: !!v }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'close failed');
+    take(j);
+  }
+  /* 시트가 돌려준 거절 사유를 사람이 읽을 문장으로 */
+  const why = code => ({
+    rate: '지금 등록이 몰려서 잠깐 막혔어요. 1분 뒤에 다시 눌러주세요',
+    busy: '지금 등록이 몰려서 잠깐 막혔어요. 1분 뒤에 다시 눌러주세요',
+    closed: '지금은 등록을 잠시 닫아뒀어요. 조금 뒤에 다시 열게요',
+    full: '등록 인원이 가득 찼어요. 호스트에게 연락해 주세요',
+    key: '호스트 비밀번호가 틀려요',
+  })[code];
+
   function tally(rows) {
     const going = rows.filter(r => r.attend !== 'no');
     const n = going.length;
@@ -86,7 +103,7 @@
   }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  window.RSVP = { list, submit, remove, canApply, saveDates, dates, hostKey, setHostKey, tally, fmt, voteOpen, copy, esc, preview: !C.endpoint,
+  window.RSVP = { list, submit, remove, canApply, closed, setClosed, why, saveDates, dates, hostKey, setHostKey, tally, fmt, voteOpen, copy, esc, preview: !C.endpoint,
     address: () => `${C.road} ${C.unit} (${C.complex})`,
     maps: () => ({ kakao: 'https://map.kakao.com/link/search/' + encodeURIComponent(C.mapQuery), naver: 'https://map.naver.com/p/search/' + encodeURIComponent(C.mapQuery) }),
   };

@@ -90,7 +90,7 @@
         </div>
       </li>`;
     };
-    return `${bars}
+    return `${R.closed() ? '<p class="rv-err rv-closed">지금은 등록을 잠시 닫아뒀어요. 조금 뒤에 다시 열게요.</p>' : ''}${bars}
       <div class="rv-people">
         <p class="rv-sub">${L.going} <b>${t.people}</b>명 <span class="rv-sub-hint">이름을 누르면 자세히 보여요</span></p>
         <ul class="rv-list">${going.map(card).join('') || '<li class="rv-empty">아직 없어요</li>'}</ul>
@@ -98,7 +98,7 @@
         <ul class="rv-cars">${cars.map(r => `<li><span>${esc(r.name)}</span><code>${esc(r.car)}</code></li>`).join('')}</ul>` : ''}
         ${no.length ? `<p class="rv-sub">아쉽지만 다음에 <b>${no.length}</b>명</p><ul class="rv-list">${no.map(card).join('')}</ul>` : ''}
         ${host ? editorHTML() : ''}
-        <p class="rv-host">${host ? `호스트 모드 켜짐 · <button type="button" class="rv-host-off">끄기</button>` : `<button type="button" class="rv-host-on">호스트</button>`}</p>
+        <p class="rv-host">${host ? `<button type="button" class="rv-lock">${R.closed() ? '등록 다시 열기' : '등록 잠시 닫기'}</button> · 호스트 모드 켜짐 · <button type="button" class="rv-host-off">끄기</button>` : `<button type="button" class="rv-host-on">호스트</button>`}</p>
         <form class="rv-host-form" hidden><input name="key" type="password" autocomplete="off" placeholder="호스트 비밀번호" aria-label="호스트 비밀번호"><button type="submit">확인</button></form>
       </div>`;
   }
@@ -166,7 +166,7 @@
             ride: yes && f.elements.hasCar.value === '2' ? f.elements.ride.value.trim() : '', message: f.elements.message.value.trim() });
           render(); btn.textContent = '등록완료!'; btn.classList.add('is-done');
           results.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } catch { err.textContent = '저장이 안 됐어요. 잠시 후 다시 눌러주세요'; btn.textContent = label; }
+        } catch (er) { err.textContent = R.why(er.message) || '저장이 안 됐어요. 잠시 후 다시 눌러주세요'; btn.textContent = label; }
         btn.disabled = false;
       };
       sync();
@@ -186,7 +186,7 @@
           if (!del.classList.contains('is-armed')) { del.classList.add('is-armed'); del.textContent = '한 번 더 누르면 삭제'; return; }
           del.disabled = true; del.textContent = '삭제 중…';
           try { rows = await R.remove(del.dataset.person); openPeople.delete(del.dataset.person); render(); }
-          catch (er) { del.disabled = false; del.classList.remove('is-armed'); del.textContent = er.message === 'key' ? '비밀번호가 틀려요' : '삭제 실패, 다시 눌러주세요'; }
+          catch (er) { del.disabled = false; del.classList.remove('is-armed'); del.textContent = er.message === 'key' ? '비밀번호가 틀려요' : er.message === 'rate' ? '잠깐 막혔어요, 1분 뒤에' : '삭제 실패, 다시 눌러주세요'; }
           return;
         }
         if (e.target.closest('.rv-de-del')) { e.target.closest('li').remove(); editing = true; return; }
@@ -209,12 +209,19 @@
             const m2 = results.querySelector('.rv-de-msg'); if (m2) m2.textContent = '저장했어요. 모두에게 바로 반영돼요.';
           } catch (er) {
             sv.disabled = false; sv.textContent = '날짜 저장';
-            msg.textContent = er.message === 'key' ? '호스트 비밀번호가 틀려요' : er.message === 'old-script' || er.message === 'name' ? 'Apps Script를 새 버전으로 다시 배포해야 저장돼요' : '저장이 안 됐어요. 다시 눌러주세요';
+            msg.textContent = R.why(er.message) && er.message !== 'closed' ? R.why(er.message) : er.message === 'old-script' || er.message === 'name' ? 'Apps Script를 새 버전으로 다시 배포해야 저장돼요' : '저장이 안 됐어요. 다시 눌러주세요';
           }
           return;
         }
         if (e.target.closest('.rv-host-on')) { const hf = results.querySelector('.rv-host-form'); hf.hidden = false; hf.elements.key.focus(); return; }
         if (e.target.closest('.rv-host-off')) { R.setHostKey(''); render(); return; }
+        const lk = e.target.closest('.rv-lock');
+        if (lk) {
+          lk.disabled = true; lk.textContent = '바꾸는 중…';
+          try { await R.setClosed(!R.closed()); render(); }
+          catch (er) { lk.disabled = false; lk.textContent = R.why(er.message) || '실패, 다시 눌러주세요'; }
+          return;
+        }
         const b = e.target.closest('.rv-bar[data-date]'); if (!b) return;
         const d = b.dataset.date; openDates.has(d) ? openDates.delete(d) : openDates.add(d);
         const row = b.parentElement, on = openDates.has(d);
