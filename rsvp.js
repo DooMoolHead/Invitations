@@ -8,17 +8,22 @@
     set(v) { try { localStorage.setItem(LS, JSON.stringify(v)); } catch {} },
   };
   const norm = s => String(s || '').replace(/\s+/g, '');
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  /* 시트에서 이상한 날짜 값이 와도 화면에 NaN이 뜨지 않게 올바른 'yyyy-mm-dd'만 남긴다 */
+  const clean = rows => (rows || []).map(x => ({ ...x, dates: (x.dates || []).map(String).filter(d => DATE_RE.test(d)) }));
+  /* 맨 앞이 = + - @ 탭 줄바꿈이면 스프레드시트가 수식으로 실행할 수 있어서 막는다 */
+  const canApply = v => typeof v !== 'string' || !/^[=+\-@\t\r]/.test(v.trim());
   const LSS = 'mingjja-settings-preview';
   let settings = {};
-  const dates = () => (settings.dates && settings.dates.length ? settings.dates : C.dates);
+  const dates = () => { const s = (settings.dates || []).filter(d => DATE_RE.test(d)); return s.length ? s : C.dates; };
   const take = j => { if (j && j.settings && typeof j.settings === 'object') settings = j.settings; };
 
   async function list() {
-    if (!C.endpoint) { try { settings = JSON.parse(localStorage.getItem(LSS)) || {}; } catch { settings = {}; } return local.get(); }
+    if (!C.endpoint) { try { settings = JSON.parse(localStorage.getItem(LSS)) || {}; } catch { settings = {}; } return clean(local.get()); }
     const r = await fetch(C.endpoint + '?action=list&t=' + Date.now());
     const j = await r.json();
     take(j);
-    return j.rows || [];
+    return clean(j.rows);
   }
   async function submit(entry) {
     entry = { ...entry, name: String(entry.name).trim(), ts: new Date().toISOString() };
@@ -30,7 +35,7 @@
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'save failed');
     take(j);
-    return j.rows;
+    return clean(j.rows);
   }
 
   const HK = 'mingjja-host';
@@ -42,7 +47,7 @@
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'delete failed');
     take(j);
-    return j.rows;
+    return clean(j.rows);
   }
   async function saveDates(list) {
     const clean = [...new Set(list.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))];
@@ -81,7 +86,7 @@
   }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  window.RSVP = { list, submit, remove, saveDates, dates, hostKey, setHostKey, tally, fmt, voteOpen, copy, esc, preview: !C.endpoint,
+  window.RSVP = { list, submit, remove, canApply, saveDates, dates, hostKey, setHostKey, tally, fmt, voteOpen, copy, esc, preview: !C.endpoint,
     address: () => `${C.road} ${C.unit} (${C.complex})`,
     maps: () => ({ kakao: 'https://map.kakao.com/link/search/' + encodeURIComponent(C.mapQuery), naver: 'https://map.naver.com/p/search/' + encodeURIComponent(C.mapQuery) }),
   };
