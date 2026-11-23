@@ -125,6 +125,8 @@
         f.elements.ride.hidden = f.elements.hasCar.value !== '2';
       };
       f.addEventListener('change', sync);
+      f.addEventListener('input', e => { const x = e.target.nextElementSibling; if (x && x.classList.contains('rv-ferr')) x.remove(); });
+      f.addEventListener('change', e => { if (e.target.name === 'dates') { const x = f.querySelector('.rv-chips + .rv-ferr'); if (x) x.remove(); } });
       f.addEventListener('input', () => { const b = f.querySelector('.rv-submit'); if (b.classList.contains('is-done')) { b.classList.remove('is-done'); b.textContent = L.submit; } });
       const fill = mine => {
         f.elements.name.value = mine.name;
@@ -142,13 +144,20 @@
       f.onsubmit = async e => {
         e.preventDefault();
         const err = f.querySelector('.rv-err'); err.textContent = '';
+        f.querySelectorAll('.rv-ferr').forEach(x => x.remove());
+        /* 문제가 있는 칸 바로 밑에 안내를 띄우고, 그 칸으로 화면을 옮긴다 */
+        const fieldErr = (el, msg, focus = true) => {
+          el.insertAdjacentHTML('afterend', `<p class="rv-err rv-ferr" role="alert">${msg}</p>`);
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (focus && el.focus) el.focus({ preventScroll: true });
+        };
         const yes = f.elements.attend.value === 'yes';
         const dates = [...f.querySelectorAll('[name=dates]:checked')].map(c => c.value);
-        if (!f.elements.name.value.trim()) { err.textContent = '이름을 적어주세요'; f.elements.name.focus(); return; }
-        const bad = ['name', 'car', 'ride', 'message'].find(k => f.elements[k] && !R.canApply(f.elements[k].value));
-        if (bad) { err.textContent = '맨 앞에 = + - @ 기호는 쓸 수 없어요'; f.elements[bad].focus(); return; }
-        if (yes && R.voteOpen() && !dates.length) { err.textContent = '되는 날을 하나 이상 골라주세요'; return; }
-        if (yes && f.elements.hasCar.value === '1' && f.elements.car.value.replace(/\s/g, '').length < 7) { err.textContent = '차량번호를 끝까지 적어주세요'; f.elements.car.focus(); return; }
+        if (!f.elements.name.value.trim()) { fieldErr(f.elements.name, '이름을 적어주세요'); return; }
+        const bad = ['name', 'car', 'ride', 'message'].find(k => f.elements[k] && !f.elements[k].hidden && !R.canApply(f.elements[k].value));
+        if (bad) { fieldErr(f.elements[bad], '맨 앞에 = + - @ 기호는 쓸 수 없어요'); return; }
+        if (yes && R.voteOpen() && !dates.length) { fieldErr(f.querySelector('.rv-chips'), '되는 날을 하나 이상 골라주세요', false); return; }
+        if (yes && f.elements.hasCar.value === '1' && f.elements.car.value.replace(/\s/g, '').length < 7) { fieldErr(f.elements.car, '차량번호를 끝까지 적어주세요'); return; }
         const btn = f.querySelector('.rv-submit'); btn.disabled = true; const label = btn.textContent; btn.textContent = '등록 중…';
         try {
           rows = await R.submit({ name: f.elements.name.value, attend: f.elements.attend.value, dates: yes ? dates : [], count: yes ? 1 : 0,
